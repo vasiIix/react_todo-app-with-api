@@ -15,8 +15,12 @@ export const postTodo = (todo: Omit<Todo, 'id'>) => {
   return client.post<Todo>(`/todos`, todo);
 };
 
-export const patchTodo = (todo: Todo) => {
-  return client.patch<Todo>(`/todos`, todo);
+export const patchTodoCompleted = (id: number, completed: boolean) => {
+  return client.patch<Todo>(`/todos/${id}`, { completed: completed });
+};
+
+export const patchTodoTitle = (id: number, title: string) => {
+  return client.patch<Todo>(`/todos/${id}`, { title: title });
 };
 
 export const deleteTodo = (todoId: number) => {
