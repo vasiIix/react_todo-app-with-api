@@ -4,28 +4,28 @@ import { Todo } from '../../types/Todo';
 
 type Props = {
   todos: Todo[];
-  creatingTodo: Todo | null;
+  todoToCreate: Todo | null;
   refEditing: React.Ref<HTMLInputElement>;
-  isEditingTodo: (id: number) => boolean;
-  isProcessing: (id: number) => boolean;
-  onCompletedMarkClik: (id: number, completed: boolean) => void;
-  onDeleteClik: (id: number) => void;
-  onEditClik: (id: number) => void;
+  todoToEdit: Todo | null;
+  checkTodoProcessing: (id: number) => boolean;
+  onToggleComplete: (id: number, completed: boolean) => void;
+  onDeleteClick: (id: number) => void;
+  onEditClick: (id: number) => void;
   onEditSubmit: (event?: React.FormEvent<HTMLFormElement>) => void;
-  onEditCensel: () => void;
+  onEditCancel: () => void;
 };
 
 export const Todos: React.FC<Props> = ({
   todos,
-  creatingTodo,
+  todoToCreate,
   refEditing,
-  isEditingTodo,
-  isProcessing,
-  onCompletedMarkClik,
-  onDeleteClik,
-  onEditClik,
+  todoToEdit,
+  checkTodoProcessing,
+  onToggleComplete,
+  onDeleteClick,
+  onEditClick,
   onEditSubmit,
-  onEditCensel,
+  onEditCancel,
 }) => {
   return (
     <section className="todoapp__main" data-cy="TodoList">
@@ -42,31 +42,11 @@ export const Todos: React.FC<Props> = ({
                 type="checkbox"
                 className="todo__status"
                 checked={completed}
-                onChange={() => onCompletedMarkClik(id, completed)}
+                onChange={() => onToggleComplete(id, completed)}
               />{' '}
             </label>
 
-            {isEditingTodo(id) ? (
-              <>
-                <span
-                  data-cy="TodoTitle"
-                  className="todo__title"
-                  onDoubleClick={() => {
-                    onEditClik(id);
-                  }}
-                >
-                  {title}
-                </span>
-                <button
-                  type="button"
-                  className="todo__remove"
-                  data-cy="TodoDelete"
-                  onClick={() => onDeleteClik(id)}
-                >
-                  ×
-                </button>
-              </>
-            ) : (
+            {todoToEdit?.id === id ? (
               <form onSubmit={onEditSubmit}>
                 <input
                   data-cy="TodoTitleField"
@@ -77,18 +57,38 @@ export const Todos: React.FC<Props> = ({
                   onBlur={() => onEditSubmit()}
                   onKeyUp={event => {
                     if (event.key === 'Escape') {
-                      onEditCensel();
+                      onEditCancel();
                     }
                   }}
                 />
               </form>
+            ) : (
+              <>
+                <span
+                  data-cy="TodoTitle"
+                  className="todo__title"
+                  onDoubleClick={() => {
+                    onEditClick(id);
+                  }}
+                >
+                  {title}
+                </span>
+                <button
+                  type="button"
+                  className="todo__remove"
+                  data-cy="TodoDelete"
+                  onClick={() => onDeleteClick(id)}
+                >
+                  ×
+                </button>
+              </>
             )}
 
             {/* overlay will cover the todo while it is being deleted or updated */}
             <div
               data-cy="TodoLoader"
               className={cn('modal', 'overlay', {
-                'is-active': isProcessing(id),
+                'is-active': checkTodoProcessing(id),
               })}
             >
               <div className="modal-background has-background-white-ter" />
@@ -99,7 +99,7 @@ export const Todos: React.FC<Props> = ({
       })}
 
       {/* This todo is in loadind state */}
-      {creatingTodo && (
+      {todoToCreate && (
         <div data-cy="Todo" className="todo">
           <label className="todo__status-label">
             <input
@@ -109,7 +109,7 @@ export const Todos: React.FC<Props> = ({
             />{' '}
           </label>
           <span data-cy="TodoTitle" className="todo__title">
-            {creatingTodo.title}
+            {todoToCreate.title}
           </span>
           <button type="button" className="todo__remove" data-cy="TodoDelete">
             ×

@@ -10,7 +10,7 @@ export class TodoFilter {
     return CollBeakFilter.Filter<Todo>(todos, predicates);
   }
 
-  public static FilterByComplit(todoFilterState: TodoFilterStatus) {
+  public static FilterByComplete(todoFilterState: TodoFilterStatus) {
     return ({ completed }: Todo) => {
       switch (todoFilterState) {
         case TodoFilterStatus.All:

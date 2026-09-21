@@ -4,7 +4,7 @@ import { TodoFilterStatus } from '../../types/TodoFilterStatus';
 
 type Props = {
   totalTodos: number;
-  complitedTodos: number;
+  completedTodos: number;
   selectedFilter: TodoFilterStatus;
   deleteCompletedTodos: () => void;
   setTodoFilter: (value: TodoFilterStatus) => void;
@@ -12,7 +12,7 @@ type Props = {
 
 export const Footer: React.FC<Props> = ({
   totalTodos,
-  complitedTodos,
+  completedTodos,
   selectedFilter,
   deleteCompletedTodos,
   setTodoFilter,
@@ -21,7 +21,7 @@ export const Footer: React.FC<Props> = ({
     totalTodos > 0 && (
       <footer className="todoapp__footer" data-cy="Footer">
         <span className="todo-count" data-cy="TodosCounter">
-          {totalTodos - complitedTodos} items left
+          {totalTodos - completedTodos} items left
         </span>
 
         {/* Active link should have the 'selected' class */}
@@ -66,7 +66,7 @@ export const Footer: React.FC<Props> = ({
           className="todoapp__clear-completed"
           data-cy="ClearCompletedButton"
           onClick={deleteCompletedTodos}
-          disabled={complitedTodos === 0}
+          disabled={completedTodos === 0}
         >
           Clear completed
         </button>

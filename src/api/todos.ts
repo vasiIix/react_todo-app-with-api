@@ -7,7 +7,7 @@ export const getTodos = (userId: number) => {
   return client.get<Todo[]>(`/todos?userId=${userId}`);
 };
 
-export const getComplitedTodos = (userId: number) => {
+export const getCompletedTodos = (userId: number) => {
   return client.get<Todo[]>(`/todos?userId=${userId}&completed=true `);
 };
 

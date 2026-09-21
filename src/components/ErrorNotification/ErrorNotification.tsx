@@ -5,7 +5,7 @@ import { TypeError } from '../../types/TypeError';
 type Props = {
   errorType: TypeError;
 };
-function getErrorMesseg(error: TypeError) {
+function getErrorMessage(error: TypeError) {
   switch (error) {
     case TypeError.TitleEmpty:
       return 'Title should not be empty';
@@ -35,7 +35,7 @@ export const ErrorNotification: React.FC<Props> = ({ errorType }) => {
       )}
     >
       <button data-cy="HideErrorButton" type="button" className="delete" />
-      {getErrorMesseg(errorType)}
+      {getErrorMessage(errorType)}
     </div>
   );
 };
