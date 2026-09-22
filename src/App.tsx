@@ -247,7 +247,7 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     refQuery.current?.focus();
-  }, [todos]);
+  }, [todos, todoToCreate]);
 
   useEffect(() => {
     if (refEditQuery.current) {
