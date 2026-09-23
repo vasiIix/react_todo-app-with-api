@@ -2,13 +2,11 @@
 /* eslint-disable jsx-a11y/control-has-associated-label */
 import React, { useEffect, useRef, useState } from 'react';
 
-import { UserWarning } from './UserWarning';
-
 import * as todoAPI from './api/todos';
 
-import { Header } from './components/Header';
+import { TodoForm } from './components/TodoForm';
 import { Footer } from './components/Footer';
-import { Todos } from './components/Todos';
+import { TodosList } from './components/TodosList';
 
 import { Todo } from './types/Todo';
 import { TodoFilterStatus } from './types/TodoFilterStatus';
@@ -16,19 +14,16 @@ import { TypeError } from './types/TypeError';
 
 import { TodoFilter } from './utils/filterTodos/TodoFilter';
 import { ErrorNotification } from './components/ErrorNotification';
+import { ToggleAll } from './components/ToggleAll';
 
 export const App: React.FC = () => {
-  const refQuery = useRef<HTMLInputElement>(null);
-  const refEditQuery = useRef<HTMLInputElement>(null);
-
   const [todos, setTodos] = useState<Todo[]>([]);
   const [todoToCreate, setTodoToCreate] = useState<Todo | null>(null);
-  const [todoToEdit, setTodoToEdit] = useState<Todo | null>(null);
-  const [processingTodoIds, setProcessingTodoIds] = useState<number[]>([]);
   const [error, setError] = useState<TypeError>(TypeError.None);
   const [todoFilterState, setTodoFilterState] = useState<TodoFilterStatus>(
     TodoFilterStatus.All,
   );
+  const refQuery = useRef<HTMLInputElement>(null);
 
   const filteredTodos = TodoFilter.Filter(
     todos,
@@ -36,7 +31,7 @@ export const App: React.FC = () => {
   );
 
   //#region supportFunctions
-  function getCompletedTodo() {
+  function getCompletedTodosCount() {
     return todos.reduce((prev, todo) => (todo.completed ? prev + 1 : prev), 0);
   }
 
@@ -45,156 +40,76 @@ export const App: React.FC = () => {
   }
 
   //#endregion
+  const saveTodo = (title: string) => {
+    if (title.length > 0) {
+      const newTodo = {
+        title: title,
+        completed: false,
+      };
 
-  //#region TodoHandlers
+      setTodoToCreate({ ...newTodo, userId: -1, id: -1 });
 
-  const handleToggleComplete = (id: number, completed: boolean) => {
-    setProcessingTodoIds(prevIds => [...prevIds, id]);
-    todoAPI
-      .patchTodoCompleted(id, !completed)
+      return todoAPI
+        .postTodo(newTodo)
+        .then(createdTodo => {
+          setTodos([...todos, createdTodo]);
+        })
+        .catch(requestError => {
+          setError(TypeError.UnableAddTodo);
+          throw requestError;
+        })
+        .finally(() => {
+          setTodoToCreate(null);
+          closeErrorMessage();
+        });
+    } else {
+      setError(TypeError.TitleEmpty);
+      closeErrorMessage();
+
+      return Promise.resolve();
+    }
+  };
+
+  const changeTodo = (id: number, changes: Partial<Omit<Todo, 'id'>>) => {
+    return todoAPI
+      .patchTodo(id, changes)
       .then(() => {
         setTodos(prevTodos =>
           prevTodos.map(todo => {
             if (todo.id === id) {
-              return { ...todo, completed: !todo.completed };
+              return { ...todo, ...changes };
             }
 
             return { ...todo };
           }),
         );
       })
-      .catch(() => setError(TypeError.UnableUpdateTodo))
+      .catch(requestError => {
+        setError(TypeError.UnableUpdateTodo);
+        throw requestError;
+      })
       .finally(() => {
-        setProcessingTodoIds(prevIds =>
-          prevIds.filter(previousId => previousId !== id),
-        );
         closeErrorMessage();
       });
   };
 
-  const handleDeleteClick = (id: number, onSuccess?: () => void) => {
-    setProcessingTodoIds(prevIds => [...prevIds, id]);
-
-    todoAPI
+  const deleteTodo = (id: number, onSuccess?: () => void) => {
+    return todoAPI
       .deleteTodo(id)
       .then(() => {
         setTodos(previousTodos => previousTodos.filter(todo => todo.id !== id));
         onSuccess?.();
+        if (refQuery.current) {
+          refQuery.current.value = '';
+        }
       })
       .catch(() => {
         setError(TypeError.UnableDeleteTodo);
       })
       .finally(() => {
         closeErrorMessage();
-
-        setProcessingTodoIds(prevIds =>
-          prevIds.filter(deletingId => deletingId !== id),
-        );
+        refQuery.current?.focus();
       });
-  };
-
-  const handleEditClick = (id: number) =>
-    setTodoToEdit(todos.find(todo => todo.id === id) || null);
-
-  const handleAnimations = (id: number) => !!processingTodoIds.includes(id);
-
-  const handleEditCancel = () => setTodoToEdit(null);
-
-  const handleEditSubmit = (event?: React.FormEvent<HTMLFormElement>) => {
-    event?.preventDefault();
-    let newTitle = '';
-
-    if (refEditQuery.current) {
-      newTitle = refEditQuery.current.value.trim();
-    }
-
-    if (!todoToEdit) {
-      return;
-    }
-
-    if (newTitle === todoToEdit.title) {
-      handleEditCancel();
-
-      return;
-    }
-
-    if (newTitle === '') {
-      handleDeleteClick(todoToEdit.id, handleEditCancel);
-
-      return;
-    }
-
-    setProcessingTodoIds(prevIds => [...prevIds, todoToEdit.id]);
-
-    todoAPI
-      .patchTodoTitle(todoToEdit.id, newTitle)
-      .then(() => {
-        setTodos(prevTodos =>
-          prevTodos.map(todo => {
-            if (todo.id === todoToEdit.id) {
-              return { ...todo, title: newTitle };
-            }
-
-            return { ...todo };
-          }),
-        );
-        setTodoToEdit(null);
-      })
-      .catch(() => {
-        setError(TypeError.UnableUpdateTodo);
-        refEditQuery.current?.focus();
-      })
-      .finally(() => {
-        closeErrorMessage();
-        setProcessingTodoIds(prevIds =>
-          prevIds.filter(todo => {
-            if (!todoToEdit) {
-              return true;
-            }
-
-            return todo !== todoToEdit.id;
-          }),
-        );
-      });
-  };
-
-  //#endregion
-
-  // #region HeaderHandlers
-
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const newTitle = refQuery.current?.value.trim() || '';
-
-    if (newTitle.length > 0) {
-      const newTodo = {
-        userId: todoAPI.USER_ID,
-        title: newTitle,
-        completed: false,
-      };
-
-      todoAPI
-        .postTodo(newTodo)
-        .then(createdTodo => {
-          setTodos([...todos, createdTodo]);
-          if (refQuery.current) {
-            refQuery.current.value = '';
-          }
-        })
-        .catch(() => {
-          setError(TypeError.UnableAddTodo);
-        })
-        .finally(() => {
-          setTodoToCreate(null);
-          closeErrorMessage();
-        });
-
-      setTodoToCreate({ ...newTodo, id: 0 });
-    } else {
-      setError(TypeError.TitleEmpty);
-      closeErrorMessage();
-    }
   };
 
   const handleToggleAllTodos = () => {
@@ -202,14 +117,14 @@ export const App: React.FC = () => {
 
     if (activeTodos.length > 0) {
       activeTodos.forEach(todo =>
-        handleToggleComplete(todo.id, todo.completed),
+        changeTodo(todo.id, { completed: !todo.completed }),
       );
     } else {
-      todos.forEach(todo => handleToggleComplete(todo.id, todo.completed));
+      todos.forEach(todo =>
+        changeTodo(todo.id, { completed: !todo.completed }),
+      );
     }
   };
-
-  //#endregion
 
   // #region FooterHandels
 
@@ -219,10 +134,10 @@ export const App: React.FC = () => {
 
   const handleDeleteCompletedTodos = () => {
     todoAPI
-      .getCompletedTodos(todoAPI.USER_ID)
+      .getCompletedTodos()
       .then(completedTodos => {
         completedTodos.forEach(({ id }) => {
-          handleDeleteClick(id);
+          deleteTodo(id);
         });
       })
       .catch(() => setError(TypeError.UnableDeleteTodo))
@@ -235,7 +150,7 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     todoAPI
-      .getTodos(todoAPI.USER_ID)
+      .getTodos()
       .then(newTodos => {
         setTodos(newTodos);
       })
@@ -245,53 +160,32 @@ export const App: React.FC = () => {
       .finally(closeErrorMessage);
   }, []);
 
-  useEffect(() => {
-    refQuery.current?.focus();
-  }, [todos, todoToCreate]);
-
-  useEffect(() => {
-    if (refEditQuery.current) {
-      refEditQuery.current.value = todoToEdit?.title || '';
-      refEditQuery.current.focus();
-    }
-  }, [todoToEdit]);
-
   // #endregion
-
-  if (!todoAPI.USER_ID) {
-    return <UserWarning />;
-  }
 
   return (
     <div className="todoapp">
       <h1 className="todoapp__title">todos</h1>
 
       <div className="todoapp__content">
-        <Header
-          refQuery={refQuery}
-          isAllTodoDone={todos.length === getCompletedTodo()}
-          isCreatingTodo={!!todoToCreate}
-          isExistTodo={!!todos.length}
-          onSubmitTodo={handleSubmit}
-          onToggleAllTodo={handleToggleAllTodos}
-        />
+        <header className="todoapp__header">
+          <ToggleAll
+            isAllDone={todos.length === getCompletedTodosCount()}
+            isExist={!!todos.length}
+            onToggle={handleToggleAllTodos}
+          />
+          <TodoForm onSaveTodo={saveTodo} refQuery={refQuery} />
+        </header>
 
-        <Todos
+        <TodosList
           todos={filteredTodos}
           todoToCreate={todoToCreate}
-          refEditing={refEditQuery}
-          todoToEdit={todoToEdit}
-          checkTodoProcessing={handleAnimations}
-          onToggleComplete={handleToggleComplete}
-          onDeleteClick={handleDeleteClick}
-          onEditClick={handleEditClick}
-          onEditSubmit={handleEditSubmit}
-          onEditCancel={handleEditCancel}
+          onsaveTodo={changeTodo}
+          onDeleteTodo={deleteTodo}
         />
 
         <Footer
           totalTodos={todos.length}
-          completedTodos={getCompletedTodo()}
+          completedTodos={getCompletedTodosCount()}
           selectedFilter={todoFilterState}
           setTodoFilter={handleSetTodoFilter}
           deleteCompletedTodos={handleDeleteCompletedTodos}
